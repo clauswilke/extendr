@@ -64,14 +64,14 @@ macro_rules! impl_prim_from_robj {
         impl<'a> FromRobj<'a> for $t {
             fn from_robj(robj: &'a Robj) -> Result<Self, &'static str> {
                 if let Some(v) = robj.as_i32_slice() {
-                    if v.len() == 0 {
-                        Err("zero length vector")
+                    if v.len() != 1 {
+                        Err("Vectors must have length 1 for scalars.")
                     } else {
                         Ok(v[0] as Self)
                     }
                 } else if let Some(v) = robj.as_f64_slice() {
-                    if v.len() == 0 {
-                        Err("zero length vector")
+                    if v.len() != 1 {
+                        Err("Vectors must have length 1 for scalars.")
                     } else {
                         Ok(v[0] as Self)
                     }
@@ -1801,10 +1801,10 @@ impl std::fmt::Debug for StrIter {
 mod tests {
     use super::*;
     use crate::engine::*;
-    use crate::*;
 
     #[test]
     fn test_debug() {
+        start_r();
         // Special values
         assert_eq!(format!("{:?}", Robj::from(NULL)), "NULL");
         assert_eq!(format!("{:?}", Robj::from(TRUE)), "TRUE");
@@ -1848,6 +1848,7 @@ mod tests {
 
     #[test]
     fn test_from_robj() {
+        start_r();
         assert_eq!(<u8>::from_robj(&Robj::from(1)), Ok(1));
         assert_eq!(<u16>::from_robj(&Robj::from(1)), Ok(1));
         assert_eq!(<u32>::from_robj(&Robj::from(1)), Ok(1));
@@ -1899,9 +1900,15 @@ mod tests {
 
         let hello = Robj::from("hello");
         assert_eq!(<&str>::from_robj(&hello), Ok("hello"));
+
+        // Scalars require len() = 1
+        assert!(<i32>::from_robj(&Robj::from(&[0_i32; 0][..])).is_err());
+        assert!(<i32>::from_robj(&Robj::from(&[0_i32; 1][..])).is_ok());
+        assert!(<i32>::from_robj(&Robj::from(&[0_i32; 2][..])).is_err());
     }
     #[test]
     fn test_to_robj() {
+        start_r();
         assert_eq!(Robj::from(1_u8), Robj::from(1));
         assert_eq!(Robj::from(1_u16), Robj::from(1));
         assert_eq!(Robj::from(1_u32), Robj::from(1));
